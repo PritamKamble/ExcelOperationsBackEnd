@@ -55,7 +55,7 @@ exports.uploadFile = (req, res, next) => {
         });
 };
 
-exports.uploadData = (req, res, next) => {
+exports.uploadData = async (req, res, next) => {
 
     console.log(req.params.fileID);
     responseData = [];
@@ -74,43 +74,48 @@ exports.uploadData = (req, res, next) => {
                 fileID: req.params.fileID
             }
         );
-        emp.save().then(
+        await emp.save().then(
             result => {
                 responseData[i] = result;
                 if (i === manager.length - 1) {
                     console.log('Manager inserted');
                     for (let j = 0, k = i + 1; j < employees.length; j++ , k++) {
-                        const emp = new EmpModel(
-                            {
-                                _id: new mongoose.Types.ObjectId(),
-                                empCode: employees[j].emp_code,
-                                mngCode: employees[j].mng_code,
-                                empName: employees[j].empName,
-                                empLastName: employees[j].empLastName,
-                                empEmail: employees[j].empEmail,
-                                empStatus: employees[j].empStatus,
-                                fileID: req.params.fileID
-                            }
-                        );
-                        emp.save().then(
-                            result => {
-                                console.log(result);
-                                responseData[k] = result;
-                                if (j === employees.length - 1) {
-                                    console.log('Employee inserted');
-                                    res.status(201).json({
-                                        message: 'Employees And Managers Inserted Successfully',
-                                        data: responseData
-                                    });
+                        function SaveEmp(mngID) {
+                            const emp = new EmpModel(
+                                {
+                                    _id: new mongoose.Types.ObjectId(),
+                                    empCode: employees[j].emp_code,
+                                    mngCode: mngID,
+                                    empName: employees[j].empName,
+                                    empLastName: employees[j].empLastName,
+                                    empEmail: employees[j].empEmail,
+                                    empStatus: employees[j].empStatus,
+                                    fileID: req.params.fileID
                                 }
+                            );
+
+                            emp.save().then(
+                                result => {
+                                    console.log(result);
+                                    responseData[k] = result;
+                                    if (j === employees.length - 1) {
+                                        console.log('Employee inserted');
+                                        res.status(201).json({
+                                            message: 'Employees And Managers Inserted Successfully'
+                                        });
+                                    }
+                                });
+                        }
+
+                        EmpModel.findOne({empCode: employees[j].mng_code})
+                            .exec()
+                            .then(async(result) => {
+                                await SaveEmp(result._id);
                             });
                     }
-
                 }
             });
     }
-
-
 };
 
 exports.getAll = (req, res, next) => {
@@ -161,7 +166,5 @@ exports.deleteFileAndData = (req, res, next) => {
                 error: err
             });
         });
-
-
 };
 
